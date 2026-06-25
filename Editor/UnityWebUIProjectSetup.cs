@@ -106,6 +106,8 @@ namespace UnityWebUI.Editor
                 {
                     ok = false;
                     sb.AppendLine("• 缺少 UnityWebUI.WebView2Gpu.dll。");
+                    sb.AppendLine("  包根: " + (UnityWebUIPackagePaths.TryGetPackageRoot() ?? "(未解析)"));
+                    sb.AppendLine("  查找: " + WindowsGpuWebViewNative.GetPluginDllPath());
                 }
             }
 
@@ -205,6 +207,8 @@ namespace UnityWebUI.Editor
                 SystemInfo.graphicsDeviceType == GraphicsDeviceType.Direct3D11);
             DrawRow("GPU DLL", WindowsGpuWebViewNative.IsDllPresent() ? "已找到" : "缺失",
                 WindowsGpuWebViewNative.IsDllPresent());
+            DrawRow("包根目录", UnityWebUIPackagePaths.TryGetPackageRoot() ?? "(未解析)", true);
+            DrawRow("DLL 路径", WindowsGpuWebViewNative.GetPluginDllPath(), File.Exists(WindowsGpuWebViewNative.GetPluginDllPath()));
             DrawRow("gree 回退", UnityWebUIProjectSetup.IsPackageInstalled("net.gree.unity-webview") ? "已安装" : "未安装（可选）",
                 true);
 

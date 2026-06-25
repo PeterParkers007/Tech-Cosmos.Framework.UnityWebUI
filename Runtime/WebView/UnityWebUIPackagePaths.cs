@@ -11,6 +11,7 @@ namespace UnityWebUI.WebView
     {
         public const string PackageName = "com.unitywebui.core";
         public const string BridgeResourcePath = "UnityWebUI/unity-bridge";
+        const string GpuPluginRelativePath = "Plugins/Windows/x86_64/UnityWebUI.WebView2Gpu.dll";
 
         public static string TryGetPackageRoot()
         {
@@ -18,6 +19,10 @@ namespace UnityWebUI.WebView
             var info = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(UnityWebUIPackagePaths).Assembly);
             if (info != null && !string.IsNullOrEmpty(info.resolvedPath))
                 return info.resolvedPath;
+
+            var scanned = TryFindPackageRootByScanning();
+            if (!string.IsNullOrEmpty(scanned))
+                return scanned;
 #endif
             return TryGetPackageRootFromAssembly();
         }
@@ -40,6 +45,118 @@ namespace UnityWebUI.WebView
             return null;
         }
 
+#if UNITY_EDITOR
+        static string TryFindPackageRootByScanning()
+        {
+            var searchRoots = new[]
+            {
+                Application.dataPath,
+                Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Packages")),
+            };
+
+            foreach (var searchRoot in searchRoots)
+            {
+                if (!Directory.Exists(searchRoot))
+                    continue;
+
+                try
+                {
+                    foreach (var jsonPath in Directory.GetFiles(searchRoot, "package.json", SearchOption.AllDirectories))
+                    {
+                        if (!PackageJsonMatches(jsonPath))
+                            continue;
+
+                        return Path.GetDirectoryName(jsonPath);
+                    }
+                }
+                catch (IOException)
+                {
+                    // ignored
+                }
+            }
+
+            return null;
+        }
+
+        static bool PackageJsonMatches(string jsonPath)
+        {
+            try
+            {
+                var text = File.ReadAllText(jsonPath);
+                return text.Contains("\"name\": \"com.unitywebui.core\"")
+                    || text.Contains("\"name\":\"com.unitywebui.core\"");
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        static bool TryFindGpuPluginDllInProject(out string fullPath)
+        {
+            var searchRoots = new[]
+            {
+                Application.dataPath,
+                Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Packages")),
+            };
+
+            foreach (var searchRoot in searchRoots)
+            {
+                if (!Directory.Exists(searchRoot))
+                    continue;
+
+                try
+                {
+                    foreach (var dllPath in Directory.GetFiles(searchRoot, "UnityWebUI.WebView2Gpu.dll", SearchOption.AllDirectories))
+                    {
+                        var normalized = dllPath.Replace('\\', '/');
+                        if (!normalized.Contains("/Plugins/Windows/x86_64/"))
+                            continue;
+
+                        fullPath = Path.GetFullPath(dllPath);
+                        return true;
+                    }
+                }
+                catch (IOException)
+                {
+                    // ignored
+                }
+            }
+
+            fullPath = null;
+            return false;
+        }
+#endif
+
+        public static bool TryResolveGpuPluginDll(out string fullPath)
+        {
+            var root = TryGetPackageRoot();
+            if (!string.IsNullOrEmpty(root))
+            {
+                var fromRoot = Path.GetFullPath(Path.Combine(root, GpuPluginRelativePath));
+                if (File.Exists(fromRoot))
+                {
+                    fullPath = fromRoot;
+                    return true;
+                }
+            }
+
+#if UNITY_EDITOR
+            if (TryFindGpuPluginDllInProject(out fullPath))
+                return true;
+#endif
+
+            var legacy = Path.GetFullPath(Path.Combine(Application.dataPath, "UnityWebUI", GpuPluginRelativePath));
+            if (File.Exists(legacy))
+            {
+                fullPath = legacy;
+                return true;
+            }
+
+            fullPath = null;
+            return false;
+        }
+
         public static string GetBundledStreamingAssetPath(string relativePath)
         {
             var root = TryGetPackageRoot();
@@ -56,15 +173,16 @@ namespace UnityWebUI.WebView
 
         public static string GetGpuPluginDllPath()
         {
+            if (TryResolveGpuPluginDll(out var resolved))
+                return resolved;
+
             var root = TryGetPackageRoot();
             if (!string.IsNullOrEmpty(root))
             {
-                return Path.GetFullPath(Path.Combine(
-                    root, "Plugins", "Windows", "x86_64", "UnityWebUI.WebView2Gpu.dll"));
+                return Path.GetFullPath(Path.Combine(root, GpuPluginRelativePath));
             }
 
-            return Path.GetFullPath(Path.Combine(
-                Application.dataPath, "UnityWebUI", "Plugins", "Windows", "x86_64", "UnityWebUI.WebView2Gpu.dll"));
+            return Path.GetFullPath(Path.Combine(Application.dataPath, "UnityWebUI", GpuPluginRelativePath));
         }
 
         public static string GetPackageBuiltGpuDllPath()

@@ -195,7 +195,7 @@ namespace UnityWebUI.WebView
                 Application.platform != RuntimePlatform.WindowsPlayer)
                 return false;
 
-            return File.Exists(GetPluginDllPath()) || File.Exists(GetEditorBuiltDllPath());
+            return UnityWebUIPackagePaths.TryResolveGpuPluginDll(out _) || File.Exists(GetEditorBuiltDllPath());
         }
 
         public static string GetPluginDllPath() => UnityWebUIPackagePaths.GetGpuPluginDllPath();
