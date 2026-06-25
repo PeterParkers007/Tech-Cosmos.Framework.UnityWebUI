@@ -31,7 +31,8 @@ namespace UnityWebUI.WebView
             var gree = new GreeUnityWebViewBackend(hostTransform);
             if (gree.IsAvailable)
             {
-                gree.ConfigureDisplay(options.BitmapRefreshCycle, options.Priority);
+                if (gree is IWebViewDisplayConfigurable configurable)
+                    configurable.ConfigureDisplay(options.BitmapRefreshCycle, options.Priority);
                 return gree;
             }
 
@@ -43,8 +44,8 @@ namespace UnityWebUI.WebView
 
             vuplex.Dispose();
             return new NullWebViewBackend(
-                "WebView 依赖未就绪。Windows GPU: 编译 Native/Windows/build.bat；" +
-                "或安装 net.gree.unity-webview + WebView2 Runtime。");
+                "WebView 未就绪。Windows：确认 Plugins/Windows/x86_64/UnityWebUI.WebView2Gpu.dll 存在，Graphics API 为 D3D11，并已安装 WebView2 Runtime。\n" +
+                "可选：Window → Unity Web UI → Setup Project，或安装 net.gree.unity-webview 作为 CPU 回退。");
         }
 
         static IWebViewBackend TryCreateGpu(Transform hostTransform, WebViewBackendOptions options)

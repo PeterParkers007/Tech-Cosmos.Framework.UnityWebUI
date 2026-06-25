@@ -1,35 +1,18 @@
 using System;
 using System.Collections;
 using System.Runtime.InteropServices;
-using System.Reflection;
-using Gree.UnityWebView;
 using UnityEngine;
 
 namespace UnityWebUI.WebView
 {
     /// <summary>
-    /// WebView backend powered by net.gree.unity-webview (WebView2 on Windows).
-    /// Bitmap capture is driven by <see cref="WebViewPerformanceHub"/> to keep multiple views smooth.
+    /// Optional fallback backend for net.gree.unity-webview. Compiles without that package installed.
     /// </summary>
-    public sealed class GreeUnityWebViewBackend : IWebViewBackend, IWebViewPumpTarget, IWebViewCaptureSuspend
+    public sealed class GreeUnityWebViewBackend : IWebViewBackend, IWebViewPumpTarget, IWebViewCaptureSuspend,
+        IWebViewJavaScriptExecutor, IWebViewDisplayConfigurable
     {
-        const string BridgeBootstrapJs =
-            "if(!window.Unity){window.Unity={call:function(m){window.location='unity:'+m;}};}";
-
         readonly Transform _hostTransform;
-        readonly WebViewObject _webView;
-        readonly FieldInfo _textureField;
-        readonly FieldInfo _textureBufferField;
-        readonly FieldInfo _webViewHandleField;
-        readonly FieldInfo _rectField;
-        readonly MethodInfo _setRectMethod;
-        readonly MethodInfo _sendMouseEventMethod;
-        readonly MethodInfo _getMessageMethod;
-        readonly MethodInfo _pluginUpdateMethod;
-        readonly MethodInfo _bitmapWidthMethod;
-        readonly MethodInfo _bitmapHeightMethod;
-        readonly MethodInfo _renderMethod;
-
+        readonly GreeWebViewObjectProxy _webView;
         bool _initialized;
         bool _readyMarginsApplied;
         bool _registeredWithHub;
@@ -54,42 +37,26 @@ namespace UnityWebUI.WebView
         public GreeUnityWebViewBackend(Transform hostTransform)
         {
             _hostTransform = hostTransform;
-            var webViewType = typeof(WebViewObject);
-            _textureField = webViewType.GetField("texture", BindingFlags.Instance | BindingFlags.NonPublic);
-            _textureBufferField = webViewType.GetField("textureDataBuffer", BindingFlags.Instance | BindingFlags.NonPublic);
-            _webViewHandleField = webViewType.GetField("webView", BindingFlags.Instance | BindingFlags.NonPublic);
-            _rectField = webViewType.GetField("rect", BindingFlags.Instance | BindingFlags.NonPublic);
-            _setRectMethod = webViewType.GetMethod("_CWebViewPlugin_SetRect", BindingFlags.Static | BindingFlags.NonPublic);
-            _sendMouseEventMethod = webViewType.GetMethod("_CWebViewPlugin_SendMouseEvent", BindingFlags.Static | BindingFlags.NonPublic);
-            _getMessageMethod = webViewType.GetMethod("_CWebViewPlugin_GetMessage", BindingFlags.Static | BindingFlags.NonPublic);
-            _pluginUpdateMethod = webViewType.GetMethod("_CWebViewPlugin_Update", BindingFlags.Static | BindingFlags.NonPublic);
-            _bitmapWidthMethod = webViewType.GetMethod("_CWebViewPlugin_BitmapWidth", BindingFlags.Static | BindingFlags.NonPublic);
-            _bitmapHeightMethod = webViewType.GetMethod("_CWebViewPlugin_BitmapHeight", BindingFlags.Static | BindingFlags.NonPublic);
-            _renderMethod = webViewType.GetMethod("_CWebViewPlugin_Render", BindingFlags.Static | BindingFlags.NonPublic);
+
+            if (!GreeWebViewObjectProxy.IsPackagePresent)
+            {
+                IsAvailable = false;
+                StatusMessage = "gree package not installed (optional fallback).";
+                return;
+            }
 
             try
             {
-                var go = new GameObject("UnityWebUI.GreeWebView");
-                go.transform.SetParent(_hostTransform, false);
-                _webView = go.AddComponent<WebViewObject>();
-                _webView.bitmapRefreshCycle = 1;
-                _webView.devicePixelRatio = 1;
-                _webView.Init(
-                    cb: ForwardMessage,
-                    hooked: ForwardMessage,
-                    ld: _ =>
-                    {
-                        _webView.SetURLPattern(string.Empty, string.Empty, "^unity:");
-                        _webView.EvaluateJS(BridgeBootstrapJs);
-                        _initialized = true;
-                        Initialized?.Invoke();
-                    });
-                _webView.SetVisibility(true);
-                // Hub drives Update; avoid duplicate native work from MonoBehaviour.Update.
-                _webView.enabled = false;
+                _webView = GreeWebViewObjectProxy.TryCreate(_hostTransform, ForwardMessage, out var error);
+                if (_webView == null)
+                {
+                    IsAvailable = false;
+                    StatusMessage = error ?? "gree unity-webview init failed.";
+                    return;
+                }
+
                 IsAvailable = true;
                 StatusMessage = "gree unity-webview (WebView2) ready.";
-
                 RegisterWithHub();
 
                 if (Application.isPlaying)
@@ -122,12 +89,20 @@ namespace UnityWebUI.WebView
 
         void ForwardMessage(string message)
         {
+            if (message == null)
+            {
+                _initialized = true;
+                Initialized?.Invoke();
+                return;
+            }
+
             if (string.IsNullOrEmpty(message))
                 return;
+
             MessageEmitted?.Invoke(message);
         }
 
-        public void ConfigureDisplay(int bitmapRefreshCycle, WebViewPumpPriority priority = WebViewPumpPriority.Runtime)
+        public void ConfigureDisplay(int bitmapRefreshCycle, WebViewPumpPriority priority = WebViewPumpPriority.Runtime, float renderScale = 1f)
         {
             _bitmapRefreshCycle = Mathf.Max(1, bitmapRefreshCycle);
             _priority = priority;
@@ -169,8 +144,7 @@ namespace UnityWebUI.WebView
 
         public void Attach(Transform hostTransform)
         {
-            if (_webView != null && hostTransform != null)
-                _webView.transform.SetParent(hostTransform, false);
+            _webView?.SetParent(hostTransform);
         }
 
         public void SetSize(int width, int height)
@@ -191,17 +165,17 @@ namespace UnityWebUI.WebView
 
         void SetNativeRect(int width, int height)
         {
-            if (_webView == null || _setRectMethod == null || _webViewHandleField == null)
+            if (_webView == null || _webView.SetRectMethod == null || _webView.WebViewHandleField == null)
                 return;
 
-            var handle = _webViewHandleField.GetValue(_webView);
+            var handle = _webView.WebViewHandleField.GetValue(_webView.Component);
             if (handle is not IntPtr ptr || ptr == IntPtr.Zero)
                 return;
 
             width = Mathf.Max(1, width);
             height = Mathf.Max(1, height);
-            _setRectMethod.Invoke(null, new object[] { ptr, width, height });
-            _rectField?.SetValue(_webView, new Rect(0, 0, width, height));
+            _webView.SetRectMethod.Invoke(null, new object[] { ptr, width, height });
+            _webView.RectField?.SetValue(_webView.Component, new Rect(0, 0, width, height));
         }
 
         public void Pump(bool captureFrame)
@@ -221,7 +195,7 @@ namespace UnityWebUI.WebView
                 return;
             }
 
-            _pluginUpdateMethod?.Invoke(null, new object[] { ptr, captureFrame, _webView.devicePixelRatio });
+            _webView.PluginUpdateMethod?.Invoke(null, new object[] { ptr, captureFrame, _webView.DevicePixelRatio });
 
             if (captureFrame)
                 UploadBitmap(ptr);
@@ -236,12 +210,12 @@ namespace UnityWebUI.WebView
 
         void ProcessMessages(IntPtr ptr)
         {
-            if (_getMessageMethod == null || _webView == null)
+            if (_webView?.GetMessageMethod == null)
                 return;
 
             for (;;)
             {
-                var raw = _getMessageMethod.Invoke(null, new object[] { ptr }) as string;
+                var raw = _webView.GetMessageMethod.Invoke(null, new object[] { ptr }) as string;
                 if (string.IsNullOrEmpty(raw))
                     break;
 
@@ -253,25 +227,25 @@ namespace UnityWebUI.WebView
                 switch (raw.Substring(0, separator))
                 {
                     case "CallFromJS":
-                        _webView.CallFromJS(payload);
+                        _webView.CallFromJsMethod?.Invoke(_webView.Component, new object[] { payload });
                         break;
                     case "CallOnError":
-                        _webView.CallOnError(payload);
+                        _webView.CallOnErrorMethod?.Invoke(_webView.Component, new object[] { payload });
                         break;
                     case "CallOnHttpError":
-                        _webView.CallOnHttpError(payload);
+                        _webView.CallOnHttpErrorMethod?.Invoke(_webView.Component, new object[] { payload });
                         break;
                     case "CallOnLoaded":
-                        _webView.CallOnLoaded(payload);
+                        _webView.CallOnLoadedMethod?.Invoke(_webView.Component, new object[] { payload });
                         break;
                     case "CallOnStarted":
-                        _webView.CallOnStarted(payload);
+                        _webView.CallOnStartedMethod?.Invoke(_webView.Component, new object[] { payload });
                         break;
                     case "CallOnHooked":
-                        _webView.CallOnHooked(payload);
+                        _webView.CallOnHookedMethod?.Invoke(_webView.Component, new object[] { payload });
                         break;
                     case "CallOnCookies":
-                        _webView.CallOnCookies(payload);
+                        _webView.CallOnCookiesMethod?.Invoke(_webView.Component, new object[] { payload });
                         break;
                 }
             }
@@ -279,16 +253,16 @@ namespace UnityWebUI.WebView
 
         void UploadBitmap(IntPtr ptr)
         {
-            if (_bitmapWidthMethod == null || _bitmapHeightMethod == null || _renderMethod == null)
+            if (_webView?.BitmapWidthMethod == null || _webView.BitmapHeightMethod == null || _webView.RenderMethod == null)
                 return;
 
-            var width = (int)_bitmapWidthMethod.Invoke(null, new object[] { ptr });
-            var height = (int)_bitmapHeightMethod.Invoke(null, new object[] { ptr });
+            var width = (int)_webView.BitmapWidthMethod.Invoke(null, new object[] { ptr });
+            var height = (int)_webView.BitmapHeightMethod.Invoke(null, new object[] { ptr });
             if (width <= 0 || height <= 0)
                 return;
 
-            var texture = _textureField?.GetValue(_webView) as Texture2D;
-            var buffer = _textureBufferField?.GetValue(_webView) as byte[];
+            var texture = _webView.TextureField?.GetValue(_webView.Component) as Texture2D;
+            var buffer = _webView.TextureBufferField?.GetValue(_webView.Component) as byte[];
             var requiredBytes = width * height * 4;
 
             if (texture == null || texture.width != width || texture.height != height)
@@ -299,14 +273,14 @@ namespace UnityWebUI.WebView
                     filterMode = FilterMode.Bilinear,
                     wrapMode = TextureWrapMode.Clamp
                 };
-                _textureField?.SetValue(_webView, texture);
+                _webView.TextureField?.SetValue(_webView.Component, texture);
                 buffer = new byte[requiredBytes];
-                _textureBufferField?.SetValue(_webView, buffer);
+                _webView.TextureBufferField?.SetValue(_webView.Component, buffer);
             }
             else if (buffer == null || buffer.Length != requiredBytes)
             {
                 buffer = new byte[requiredBytes];
-                _textureBufferField?.SetValue(_webView, buffer);
+                _webView.TextureBufferField?.SetValue(_webView.Component, buffer);
             }
 
             if (buffer == null || buffer.Length == 0)
@@ -315,7 +289,7 @@ namespace UnityWebUI.WebView
             var handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
             try
             {
-                _renderMethod.Invoke(null, new object[] { ptr, handle.AddrOfPinnedObject() });
+                _webView.RenderMethod.Invoke(null, new object[] { ptr, handle.AddrOfPinnedObject() });
             }
             finally
             {
@@ -328,7 +302,7 @@ namespace UnityWebUI.WebView
 
         void SyncTextureFromWebView()
         {
-            Texture = _textureField?.GetValue(_webView) as Texture;
+            Texture = _webView?.TextureField?.GetValue(_webView.Component) as Texture;
         }
 
         void TryCompleteReady()
@@ -351,21 +325,21 @@ namespace UnityWebUI.WebView
 
         IntPtr GetNativeHandle()
         {
-            if (_webViewHandleField == null || _webView == null)
+            if (_webView?.WebViewHandleField == null)
                 return IntPtr.Zero;
 
-            var handle = _webViewHandleField.GetValue(_webView);
+            var handle = _webView.WebViewHandleField.GetValue(_webView.Component);
             return handle is IntPtr ptr ? ptr : IntPtr.Zero;
         }
 
         public void LoadUrl(string url)
         {
-            _webView?.LoadURL(url);
+            _webView?.LoadUrl(url);
         }
 
         public void PostMessage(string message)
         {
-            _webView?.EvaluateJS($"if(window.vuplex)window.vuplex.postMessage({JsonString(message)});");
+            _webView?.EvaluateJs($"if(window.vuplex)window.vuplex.postMessage({JsonString(message)});");
         }
 
         public void Click(int x, int y)
@@ -402,21 +376,20 @@ namespace UnityWebUI.WebView
         void SendMouseEvent(int x, int y, float scrollDelta, int mouseState)
         {
             var ptr = GetNativeHandle();
-            if (ptr == IntPtr.Zero || _sendMouseEventMethod == null)
+            if (ptr == IntPtr.Zero || _webView?.SendMouseEventMethod == null)
                 return;
 
-            _sendMouseEventMethod.Invoke(null, new object[] { ptr, x, y, scrollDelta, mouseState });
+            _webView.SendMouseEventMethod.Invoke(null, new object[] { ptr, x, y, scrollDelta, mouseState });
         }
 
         public void Tick()
         {
-            // Kept for interface compatibility; hub is the single pump entry point.
             Pump(true);
         }
 
         public void ExecuteJavaScript(string script)
         {
-            _webView?.EvaluateJS(script);
+            _webView?.EvaluateJs(script);
         }
 
         static string JsonString(string raw)
@@ -431,12 +404,13 @@ namespace UnityWebUI.WebView
             WebViewPerformanceHub.Unregister(this);
             _registeredWithHub = false;
 
-            if (_webView != null)
+            var go = _webView?.GameObject;
+            if (go != null)
             {
                 if (Application.isPlaying)
-                    UnityEngine.Object.Destroy(_webView.gameObject);
+                    UnityEngine.Object.Destroy(go);
                 else
-                    UnityEngine.Object.DestroyImmediate(_webView.gameObject);
+                    UnityEngine.Object.DestroyImmediate(go);
             }
 
             Texture = null;

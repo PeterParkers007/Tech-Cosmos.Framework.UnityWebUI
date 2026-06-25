@@ -244,15 +244,8 @@ namespace UnityWebUI.WebView
 
         void ApplyBackendDisplayOptions()
         {
-            switch (_backend)
-            {
-                case GreeUnityWebViewBackend gree:
-                    gree.ConfigureDisplay(_bitmapRefreshCycle, WebViewPumpPriority.Runtime);
-                    break;
-                case WindowsGpuWebViewBackend gpu:
-                    gpu.ConfigureDisplay(_bitmapRefreshCycle, WebViewPumpPriority.Runtime, _renderScale);
-                    break;
-            }
+            if (_backend is IWebViewDisplayConfigurable configurable)
+                configurable.ConfigureDisplay(_bitmapRefreshCycle, WebViewPumpPriority.Runtime, _renderScale);
         }
 
         public void LoadLocalHtml(string htmlFilePath)

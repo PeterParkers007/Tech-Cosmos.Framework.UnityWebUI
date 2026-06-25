@@ -1,9 +1,7 @@
 {
     "name": "UnityWebUI.Runtime",
     "rootNamespace": "UnityWebUI",
-    "references": [
-        "unity-webview"
-    ],
+    "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

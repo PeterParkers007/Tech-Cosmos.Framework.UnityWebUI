@@ -9,7 +9,7 @@ namespace UnityWebUI.WebView
     /// Optional Vuplex 3D WebView integration via reflection so the package compiles without the plugin installed.
     /// Install Vuplex and reload scripts — no code changes required.
     /// </summary>
-    public sealed class VuplexWebViewBackend : IWebViewBackend
+    public sealed class VuplexWebViewBackend : IWebViewBackend, IWebViewJavaScriptExecutor
     {
         static readonly string[] AssemblyNames =
         {

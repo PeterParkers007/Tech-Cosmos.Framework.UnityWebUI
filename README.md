@@ -46,7 +46,7 @@
 | **UnityEvent 绑定** | 绑定保存在场景 `WebViewActionDispatcher` 上，可拖 Hierarchy 对象 |
 | **页式开关** | `SetPageVisible` / `WebViewPageToggle`：ESC 菜单无需 Destroy WebView |
 | **UPM 包** | `com.unitywebui.core`，Git / 本地 / 嵌入式安装 |
-| **gree 回退** | GPU 不可用时自动回退到 gree unity-webview（CPU 位图） |
+| **可选 gree 回退** | GPU 不可用时可用 CPU 位图回退（**不装也能编译**；Setup 里一键安装） |
 
 ---
 
@@ -114,7 +114,7 @@
 | **操作系统** | Windows 10/11（GPU 主路径） |
 | **图形 API** | **D3D11**（Project Settings → Player → Graphics） |
 | **WebView2 Runtime** | 系统需安装 [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)（Win11 通常已带） |
-| **可选依赖** | [net.gree.unity-webview](https://github.com/gree/unity-webview)（`package.json` 已声明，作 GPU 失败时的回退） |
+| **可选** | [net.gree.unity-webview](https://github.com/gree/unity-webview)（Setup 菜单一键安装，仅 GPU 失败时需要） |
 
 ---
 
@@ -122,36 +122,37 @@
 
 包名：**`com.unitywebui.core`**
 
-### 方式 A：Git URL（团队推荐）
+**导入后第一步（推荐）：** 菜单 **Window → Unity Web UI → Setup Project**  
+检查 D3D11、GPU DLL，并可一键安装可选 gree 回退。
+
+> **无需再手动装 gree 才能编译。** gree 仅为 GPU 不可用时的可选 CPU 回退。
+
+### 方式 A：Git URL
 
 编辑项目 `Packages/manifest.json`：
 
 ```json
 {
   "dependencies": {
-    "com.unitywebui.core": "https://github.com/你的组织/你的仓库.git?path=Assets/UnityWebUI",
-    "net.gree.unity-webview": "https://github.com/gree/unity-webview.git?path=/dist/package"
+    "com.unitywebui.core": "https://github.com/PeterParkers007/Tech-Cosmos.Framework.UnityWebUI.git"
   }
 }
 ```
 
-保存后 Unity Package Manager 会自动拉取。首次打开需等待依赖解析完成。
+保存后 Unity 会自动拉取。若 Windows 报 `PackageCache` 的 `EPERM`，见 [常见问题](#缺少-gree-依赖)。
 
-### 方式 B：本地文件夹
+### 方式 B：本地文件夹（最省心）
 
-1. 将本仓库中的 `UnityWebUI` 文件夹复制到项目的 `Packages/com.unitywebui.core`  
-2. 确保根目录存在 `package.json`  
-3. `manifest.json` 中添加：
+1. 将仓库复制到 `Packages/com.unitywebui.core`（保留根目录 `package.json`）  
+2. `manifest.json` 添加：
 
 ```json
 "com.unitywebui.core": "file:com.unitywebui.core"
 ```
 
-（路径相对于项目根目录的 `Packages` 文件夹。）
-
 ### 方式 C：放在 Assets 下（嵌入式包）
 
-将 `UnityWebUI` 放在 `Assets/UnityWebUI`，且保留 `package.json`，Unity 会识别为 **Embedded Package**，无需改 manifest。
+将包文件夹放在 `Assets/` 下并保留 `package.json`（例如 `Assets/UnityWebUI`）。**可直接编译，不依赖 manifest 拉 gree。**
 
 ---
 
@@ -540,10 +541,11 @@ UnityWebUI/
 - 正常：WebView2 进程保留；用 `SetPageVisible` 时 **不抓帧**  
 - 要释放内存请 **Destroy Host** 或卸载场景  
 
-### 缺少 gree 依赖
+### 缺少 gree / Git 安装 EPERM
 
-- manifest 中加入 `net.gree.unity-webview`（见安装章节）  
-- 或仅依赖 GPU 路径（Windows + 已构建 DLL）  
+- **编译报错 Gree 找不到：** v1.0+ 已不要求 gree；更新到最新包即可  
+- **GPU 不可用且未装 gree：** 菜单 **Window → Unity Web UI → Install Optional Gree Fallback**  
+- **Git URL 报 `PackageCache` EPERM：** 关掉 Unity/杀毒/资源管理器对 `Library` 的占用，删 `Library/PackageCache/.tmp-*` 后重开；或改用 **方式 B 本地 `file:` 安装**
 
 ---
 

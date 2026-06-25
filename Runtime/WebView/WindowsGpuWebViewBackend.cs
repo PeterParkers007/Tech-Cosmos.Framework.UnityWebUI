@@ -9,7 +9,8 @@ namespace UnityWebUI.WebView
     /// Windows-only WebView2 backend using D3D11 GPU capture (native plugin).
     /// Falls back to gree when the DLL is missing or graphics API is not D3D11.
     /// </summary>
-    public sealed class WindowsGpuWebViewBackend : IWebViewBackend, IWebViewPumpTarget, IWebViewCaptureSuspend
+    public sealed class WindowsGpuWebViewBackend : IWebViewBackend, IWebViewPumpTarget, IWebViewCaptureSuspend,
+        IWebViewJavaScriptExecutor, IWebViewDisplayConfigurable
     {
         readonly Transform _hostTransform;
         readonly GCHandle _selfHandle;

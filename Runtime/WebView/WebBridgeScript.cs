@@ -73,18 +73,8 @@ namespace UnityWebUI.WebView
             if (backend == null || string.IsNullOrEmpty(script))
                 return;
 
-            switch (backend)
-            {
-                case GreeUnityWebViewBackend gree:
-                    gree.ExecuteJavaScript(script);
-                    break;
-                case VuplexWebViewBackend vuplex:
-                    vuplex.ExecuteJavaScript(script);
-                    break;
-                case WindowsGpuWebViewBackend gpu:
-                    gpu.ExecuteJavaScript(script);
-                    break;
-            }
+            if (backend is IWebViewJavaScriptExecutor executor)
+                executor.ExecuteJavaScript(script);
         }
 
         static string FallbackEmitAtPointJs(int x, int y)
