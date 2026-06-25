@@ -1,0 +1,33 @@
+{
+  "name": "com.unitywebui.core",
+  "version": "1.0.0",
+  "displayName": "Unity Web UI",
+  "description": "Render local HTML/CSS as Unity UI (Windows WebView2 GPU + gree fallback). Action Mapper binds button clicks to UnityEvents. Ideal for menus, shops, and page-style UI.",
+  "unity": "2022.3",
+  "unityRelease": "0f1",
+  "documentationUrl": "https://github.com/PeterParkers007/Tech-Cosmos.Framework.UnityWebUI#readme",
+  "changelogUrl": "https://github.com/PeterParkers007/Tech-Cosmos.Framework.UnityWebUI/blob/main/Assets/UnityWebUI/CHANGELOG.md",
+  "licensesUrl": "https://github.com/PeterParkers007/Tech-Cosmos.Framework.UnityWebUI/blob/main/LICENSE",
+  "keywords": [
+    "webview",
+    "html",
+    "ui",
+    "webview2",
+    "menu",
+    "hud"
+  ],
+  "author": {
+    "name": "Tech-Cosmos",
+    "url": "https://github.com/PeterParkers007/Tech-Cosmos.Framework.UnityWebUI"
+  },
+  "dependencies": {
+    "net.gree.unity-webview": "https://github.com/gree/unity-webview.git?path=/dist/package"
+  },
+  "samples": [
+    {
+      "displayName": "Basic Web UI Page",
+      "description": "Sample HTML page and setup notes for WebViewHost + Action Mapper.",
+      "path": "Samples~/BasicWebUI"
+    }
+  ]
+}

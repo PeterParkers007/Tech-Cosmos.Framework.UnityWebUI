@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unity Web UI Sample</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #0f0a14;
+      color: #e2d9c5;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card {
+      padding: 32px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      max-width: 420px;
+    }
+    h1 { margin: 0 0 12px; font-size: 22px; }
+    p { line-height: 1.5; margin: 0 0 16px; color: #9a8f7a; }
+    button {
+      background: #7c6ef0;
+      color: white;
+      border: none;
+      border-radius: 999px;
+      padding: 12px 24px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: 0 8px 24px rgba(124,110,240,0.35);
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(124,110,240,0.5);
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Unity Web UI</h1>
+    <p>Browser renders this page. Unity receives <code>data-unity-action</code> clicks.</p>
+    <button data-unity-action="hello">Send to Unity</button>
+    <button style="margin-left:12px;background:#3d8bfd;">Auto-detected Button</button>
+  </div>
+  <script src="../unity-bridge.js"></script>
+</body>
+</html>

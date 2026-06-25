@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unity Web UI Sample</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #0f0a14;
+      color: #e2d9c5;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card {
+      padding: 32px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      max-width: 420px;
+      text-align: center;
+    }
+    h1 { margin: 0 0 12px; font-size: 22px; }
+    p { line-height: 1.5; margin: 0 0 20px; color: #9a8f7a; }
+    button {
+      background: #7c6ef0;
+      color: white;
+      border: none;
+      border-radius: 999px;
+      padding: 12px 24px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:active { transform: scale(0.97); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Unity Web UI</h1>
+    <p>Sample page — bind the button in Action Mapper.</p>
+    <button data-unity-action="sample_hello">Hello Unity</button>
+  </div>
+</body>
+</html>
