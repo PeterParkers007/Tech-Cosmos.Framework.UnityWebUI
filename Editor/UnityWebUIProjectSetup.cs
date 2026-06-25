@@ -90,7 +90,7 @@ namespace UnityWebUI.Editor
             var sb = new StringBuilder();
             var ok = true;
 
-            if (!IsWindowsGpuPlatform())
+            if (!IsWindowsGpuPlatform)
             {
                 sb.AppendLine("• 当前平台非 Windows，GPU 主路径不可用。");
             }
