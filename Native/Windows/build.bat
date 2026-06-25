@@ -2,12 +2,31 @@
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
 
+if defined UNITYWEBUI_PACKAGE_ROOT (
+    for %%I in ("%UNITYWEBUI_PACKAGE_ROOT%") do set "PACKAGE_ROOT=%%~fI"
+) else (
+    for %%I in ("%~dp0..\..") do set "PACKAGE_ROOT=%%~fI"
+)
+
+if defined UNITYWEBUI_PROJECT_ROOT (
+    for %%I in ("%UNITYWEBUI_PROJECT_ROOT%") do set "PROJECT_ROOT=%%~fI"
+) else (
+    set "SEARCH=%PACKAGE_ROOT%"
+    :find_project_root
+    if exist "!SEARCH!\ProjectSettings\ProjectVersion.txt" (
+        set "PROJECT_ROOT=!SEARCH!"
+        goto :have_project_root
+    )
+    for %%I in ("!SEARCH!\..") do set "SEARCH=%%~fI"
+    if /I not "!SEARCH!"=="!SEARCH!\.." goto :find_project_root
+    echo [UnityWebUI] ERROR: Could not find Unity project root from %PACKAGE_ROOT%
+    exit /b 1
+    :have_project_root
+)
+
 rem NuGet packages must live OUTSIDE Assets so Unity does not import WPF/WinRT DLLs.
-cd /d "%~dp0..\..\..\.."
-set "PROJECT_ROOT=%CD%"
 set "PACKAGES_DIR=%PROJECT_ROOT%\WebView2Build\packages"
 set "WEBVIEW2_SDK=%PACKAGES_DIR%\Microsoft.Web.WebView2\build\native"
-cd /d "%~dp0"
 
 set NUGET=%~dp0nuget.exe
 if not exist "%NUGET%" (
@@ -90,7 +109,7 @@ if errorlevel 1 (
 )
 
 set "BUILT_DLL=%PROJECT_ROOT%\WebView2Build\Native\x64\Release\_out\UnityWebUI.WebView2Gpu.dll"
-set "PLUGIN_DIR=%PROJECT_ROOT%\Assets\UnityWebUI\Plugins\Windows\x86_64"
+set "PLUGIN_DIR=%PACKAGE_ROOT%\Plugins\Windows\x86_64"
 set "PLUGIN_DLL=%PLUGIN_DIR%\UnityWebUI.WebView2Gpu.dll"
 
 if not exist "%BUILT_DLL%" (
@@ -105,7 +124,7 @@ if errorlevel 1 (
     echo [UnityWebUI] Compile succeeded. Plugins copy skipped ^(DLL locked^).
     echo [UnityWebUI] Unity will apply the update after script reload.
 ) else (
-    echo [UnityWebUI] Built UnityWebUI.WebView2Gpu.dll -^> Assets/UnityWebUI/Plugins/Windows/x86_64/
+    echo [UnityWebUI] Built UnityWebUI.WebView2Gpu.dll -^> %PLUGIN_DIR%
 )
 endlocal
 exit /b 0

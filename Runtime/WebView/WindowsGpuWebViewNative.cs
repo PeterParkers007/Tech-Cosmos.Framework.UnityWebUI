@@ -198,8 +198,18 @@ namespace UnityWebUI.WebView
             return File.Exists(GetPluginDllPath()) || File.Exists(GetEditorBuiltDllPath());
         }
 
-        public static string GetPluginDllPath() =>
-            Path.GetFullPath(Path.Combine(Application.dataPath, "UnityWebUI", "Plugins", "Windows", "x86_64", "UnityWebUI.WebView2Gpu.dll"));
+        public static string GetPluginDllPath()
+        {
+            var root = UnityWebUIPackagePaths.TryGetPackageRoot();
+            if (!string.IsNullOrEmpty(root))
+            {
+                return Path.GetFullPath(Path.Combine(
+                    root, "Plugins", "Windows", "x86_64", "UnityWebUI.WebView2Gpu.dll"));
+            }
+
+            return Path.GetFullPath(Path.Combine(
+                Application.dataPath, "UnityWebUI", "Plugins", "Windows", "x86_64", "UnityWebUI.WebView2Gpu.dll"));
+        }
 
         static string GetEditorBuiltDllPath() =>
             Path.GetFullPath(Path.Combine(Application.dataPath, "..", "WebView2Build", "Native", "x64", "Release", "_out", "UnityWebUI.WebView2Gpu.dll"));

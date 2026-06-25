@@ -2,6 +2,7 @@
 using System.IO;
 using UnityEditor;
 using UnityEngine;
+using UnityWebUI.WebView;
 
 namespace UnityWebUI.Editor
 {
@@ -11,13 +12,21 @@ namespace UnityWebUI.Editor
         {
             get
             {
-                var info = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(UnityWebUIEditorPackagePaths).Assembly);
-                if (info != null && !string.IsNullOrEmpty(info.resolvedPath))
-                    return info.resolvedPath;
+                var root = UnityWebUIPackagePaths.TryGetPackageRoot();
+                if (!string.IsNullOrEmpty(root))
+                    return root;
 
                 return Path.GetFullPath(Path.Combine(Application.dataPath, "UnityWebUI"));
             }
         }
+
+        public static string NativeWindowsPath => Path.Combine(PackageRoot, "Native", "Windows");
+
+        public static string BuildBatPath => Path.Combine(NativeWindowsPath, "build.bat");
+
+        public static string ApplyGpuPluginBatPath => Path.Combine(NativeWindowsPath, "apply-gpu-plugin.bat");
+
+        public static string BuildLogPath => Path.Combine(NativeWindowsPath, "build-last.log");
 
         public static string PluginDllPath =>
             Path.Combine(PackageRoot, "Plugins", "Windows", "x86_64", "UnityWebUI.WebView2Gpu.dll");

@@ -10,8 +10,6 @@ namespace UnityWebUI.Editor
 {
     static class WebViewGpuBuildMenu
     {
-        const string BuildBat = "Assets/UnityWebUI/Native/Windows/build.bat";
-
         [MenuItem("Window/Unity Web UI/Diagnose GPU Backend")]
         public static void DiagnoseGpuBackend()
         {
@@ -23,20 +21,22 @@ namespace UnityWebUI.Editor
         {
             WebViewGpuPluginDeploy.ClosePreviewWindows();
 
-            var projectRoot = Path.GetDirectoryName(Application.dataPath);
-            var batPath = Path.Combine(projectRoot, BuildBat.Replace('/', Path.DirectorySeparatorChar));
+            var batPath = UnityWebUIEditorPackagePaths.BuildBatPath;
             if (!File.Exists(batPath))
             {
-                EditorUtility.DisplayDialog("Unity Web UI", "build.bat not found:\n" + batPath, "OK");
+                EditorUtility.DisplayDialog(
+                    "Unity Web UI",
+                    "build.bat not found:\n" + batPath + "\n\nPackage root:\n" + UnityWebUIEditorPackagePaths.PackageRoot,
+                    "OK");
                 return;
             }
 
-            var logPath = Path.Combine(Path.GetDirectoryName(batPath), "build-last.log");
+            var logPath = UnityWebUIEditorPackagePaths.BuildLogPath;
             var startInfo = new ProcessStartInfo
             {
                 FileName = "cmd.exe",
                 Arguments = $"/c \"{batPath}\"",
-                WorkingDirectory = Path.GetDirectoryName(batPath),
+                WorkingDirectory = UnityWebUIEditorPackagePaths.NativeWindowsPath,
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,
@@ -44,6 +44,8 @@ namespace UnityWebUI.Editor
                 StandardOutputEncoding = Encoding.UTF8,
                 StandardErrorEncoding = Encoding.UTF8,
             };
+            startInfo.EnvironmentVariables["UNITYWEBUI_PACKAGE_ROOT"] = UnityWebUIEditorPackagePaths.PackageRoot;
+            startInfo.EnvironmentVariables["UNITYWEBUI_PROJECT_ROOT"] = Path.GetDirectoryName(Application.dataPath);
 
             string log;
             int exitCode = -1;
@@ -73,11 +75,11 @@ namespace UnityWebUI.Editor
             {
                 var tail = GetLogTail(log, 12);
                 var hint = log.Contains("LNK1104")
-                    ? "\n\nHint: Unity is locking the GPU plugin DLL. Close Unity, run Assets/UnityWebUI/Native/Windows/apply-gpu-plugin.bat, then reopen."
+                    ? "\n\nHint: Unity is locking the GPU plugin DLL. Close Unity, run apply-gpu-plugin.bat in the package Native/Windows folder, then reopen."
                     : string.Empty;
                 EditorUtility.DisplayDialog(
                     "Unity Web UI",
-                    $"Build failed (exit {exitCode}).\n\n{tail}{hint}\n\nFull log: Assets/UnityWebUI/Native/Windows/build-last.log",
+                    $"Build failed (exit {exitCode}).\n\n{tail}{hint}\n\nFull log:\n{logPath}",
                     "OK");
                 return;
             }
