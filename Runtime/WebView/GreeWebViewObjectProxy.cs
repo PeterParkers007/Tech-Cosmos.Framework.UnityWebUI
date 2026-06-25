@@ -213,7 +213,8 @@ namespace UnityWebUI.WebView
             initMethod.Invoke(_component, args);
 
             _setVisibilityMethod?.Invoke(_component, new object[] { true });
-            _component.enabled = false;
+            if (_component is Behaviour behaviour)
+                behaviour.enabled = false;
             return true;
         }
 
