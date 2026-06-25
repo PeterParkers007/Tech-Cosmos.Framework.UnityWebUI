@@ -2,8 +2,24 @@
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
 
-set "PROJECT_ROOT=%~dp0..\..\..\.."
-for %%I in ("%PROJECT_ROOT%") do set "PROJECT_ROOT=%%~fI"
+if defined UNITYWEBUI_PACKAGE_ROOT (
+    for %%I in ("%UNITYWEBUI_PACKAGE_ROOT%") do set "PACKAGE_ROOT=%%~fI"
+) else (
+    for %%I in ("%~dp0..\..") do set "PACKAGE_ROOT=%%~fI"
+)
+
+set "SEARCH=%PACKAGE_ROOT%"
+:find_project_root
+if exist "!SEARCH!\ProjectSettings\ProjectVersion.txt" (
+    set "PROJECT_ROOT=!SEARCH!"
+    goto :have_project_root
+)
+for %%I in ("!SEARCH!\..") do set "SEARCH=%%~fI"
+if /I not "!SEARCH!"=="!SEARCH!\.." goto :find_project_root
+echo [UnityWebUI] ERROR: Could not find Unity project root from %PACKAGE_ROOT%
+goto :fail
+
+:have_project_root
 set "VERSION_FILE=%PROJECT_ROOT%\ProjectSettings\ProjectVersion.txt"
 set "APPLY_BAT=%~dp0apply-gpu-plugin.bat"
 set "FIND_UNITY_BAT=%~dp0find-unity-editor.bat"
@@ -14,6 +30,7 @@ echo ============================================================
 echo  UnityWebUI - Close Unity ^> Apply GPU plugin ^> Reopen ^> Play
 echo ============================================================
 echo Project: %PROJECT_ROOT%
+echo Package: %PACKAGE_ROOT%
 echo.
 
 if not exist "%VERSION_FILE%" (
@@ -28,77 +45,51 @@ if not exist "%BUILT_DLL%" (
 )
 
 set "UNITY_VERSION="
-for /f "usebackq tokens=1,* delims=:" %%A in (`findstr /B /I "m_EditorVersion:" "%VERSION_FILE%"`) do (
-    set "UNITY_VERSION=%%B"
+for /f "usebackq tokens=1,* delims=:" %%A in ("%VERSION_FILE%") do (
+    if /I "%%A"=="m_EditorVersion" set "UNITY_VERSION=%%B"
 )
 set "UNITY_VERSION=%UNITY_VERSION: =%"
-if not defined UNITY_VERSION (
+if "%UNITY_VERSION%"=="" (
     echo [UnityWebUI] ERROR: Could not read m_EditorVersion from ProjectVersion.txt
     goto :fail
 )
 
-rem Major prefix for fuzzy folder match (2022.3.48f1c1 -^> 2022.3.48)
-set "UNITY_MAJOR=%UNITY_VERSION%"
-for /f "tokens=1,2,3 delims=." %%A in ("%UNITY_VERSION%") do set "UNITY_MAJOR=%%A.%%B.%%C"
 echo [UnityWebUI] Unity version: %UNITY_VERSION%
-echo.
-
-echo [1/4] Closing Unity Editor (all Unity.exe instances)...
-echo        Press Ctrl+C within 3 seconds to cancel.
-timeout /t 3 /nobreak >nul
 
 tasklist /FI "IMAGENAME eq Unity.exe" 2>nul | find /I "Unity.exe" >nul
 if not errorlevel 1 (
-    taskkill /IM Unity.exe /T /F >nul 2>&1
-    set /a WAIT_LEFT=30
-    :wait_unity_exit
-    tasklist /FI "IMAGENAME eq Unity.exe" 2>nul | find /I "Unity.exe" >nul
-    if errorlevel 1 goto :unity_closed
-    timeout /t 1 /nobreak >nul
-    set /a WAIT_LEFT-=1
-    if !WAIT_LEFT! GTR 0 goto :wait_unity_exit
+    echo [UnityWebUI] Closing Unity...
+    taskkill /IM Unity.exe /F >nul 2>&1
+    timeout /t 2 /nobreak >nul
+)
+
+tasklist /FI "IMAGENAME eq Unity.exe" 2>nul | find /I "Unity.exe" >nul
+if not errorlevel 1 (
     echo [UnityWebUI] ERROR: Unity.exe is still running. Close it manually and run again.
     goto :fail
 )
-:unity_closed
-echo [UnityWebUI] Unity closed.
-echo.
 
-echo [2/4] Applying GPU plugin...
+echo [UnityWebUI] Unity closed.
+set "UNITYWEBUI_PACKAGE_ROOT=%PACKAGE_ROOT%"
+set "UNITYWEBUI_PROJECT_ROOT=%PROJECT_ROOT%"
 call "%APPLY_BAT%" /nopause
 if errorlevel 1 goto :fail
-echo.
 
-echo [3/4] Locating Unity.exe...
 set "UNITY_EXE="
-call "%FIND_UNITY_BAT%"
-if errorlevel 1 (
-    echo [UnityWebUI] ERROR: Unity.exe not found for version %UNITY_VERSION%.
-    echo.
-    echo Tried:
-    echo   - Unity Hub secondary path from %%APPDATA%%\UnityHub\secondaryInstallPath.json
-    echo   - %%ProgramFiles%%\Unity\Hub\Editor\%UNITY_VERSION%\Editor\Unity.exe
-    echo   - PATH
-    echo.
-    echo Fix: copy unity-editor-path.local.example.bat to unity-editor-path.local.bat
-    echo       and set UNITY_EXE to your Unity.exe path.
-    goto :fail
+if exist "%FIND_UNITY_BAT%" (
+    for /f "usebackq delims=" %%I in (`call "%FIND_UNITY_BAT%" "%UNITY_VERSION%"`) do set "UNITY_EXE=%%I"
 )
-echo [UnityWebUI] Using: !UNITY_EXE!
-echo.
 
-echo [4/4] Launching Unity and entering Play Mode when ready...
-start "" "!UNITY_EXE!" -projectPath "%PROJECT_ROOT%" -executeMethod %EXECUTE_METHOD%
-if errorlevel 1 (
-    echo [UnityWebUI] ERROR: Failed to start Unity.
+if not defined UNITY_EXE (
+    echo [UnityWebUI] ERROR: Unity.exe not found for version %UNITY_VERSION%.
     goto :fail
 )
+
+echo [UnityWebUI] Using: !UNITY_EXE!
+start "" "!UNITY_EXE!" -projectPath "%PROJECT_ROOT%" -executeMethod %EXECUTE_METHOD%
 echo [UnityWebUI] Done. Unity is starting; Play Mode will auto-start after scripts compile.
-echo.
-pause
 exit /b 0
 
 :fail
-echo.
 pause
 exit /b 1

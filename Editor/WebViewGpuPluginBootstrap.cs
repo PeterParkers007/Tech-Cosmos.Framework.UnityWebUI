@@ -19,7 +19,8 @@ namespace UnityWebUI.Editor
                 {
                     UnityEngine.Debug.LogWarning(
                         "[UnityWebUI] GPU plugin on disk is outdated and could not be replaced while Unity is running.\n" +
-                        "Close Unity, run Assets/UnityWebUI/Native/Windows/apply-gpu-plugin.bat, then reopen the project.\n" +
+                        "Close Unity, run apply-gpu-plugin.bat in:\n" + UnityWebUIEditorPackagePaths.NativeWindowsPath + "\n" +
+                        "then reopen the project.\n" +
                         deployMessage);
                 }
                 return;

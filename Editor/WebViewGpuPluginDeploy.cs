@@ -105,7 +105,7 @@ namespace UnityWebUI.Editor
             {
                 message = "Plugins DLL is locked by Unity.\n\n" +
                             "1. Close Unity completely\n" +
-                            "2. Run: Assets/UnityWebUI/Native/Windows/apply-gpu-plugin.bat\n" +
+                            "2. Run: " + UnityWebUIEditorPackagePaths.ApplyGpuPluginBatPath + "\n" +
                             "3. Reopen the project\n\n" + ex.Message;
                 try
                 {

@@ -8,7 +8,16 @@ namespace UnityWebUI.Editor
 {
     static class WebViewBindingProfileUtility
     {
-        const string DefaultFolder = "Assets/UnityWebUI/BindingProfiles";
+        const string DefaultFolderFallback = "Assets/UnityWebUI/BindingProfiles";
+
+        public static string DefaultBindingProfilesFolder
+        {
+            get
+            {
+                var folder = UnityWebUIPackagePaths.GetDefaultBindingProfilesFolder();
+                return string.IsNullOrEmpty(folder) ? DefaultFolderFallback : folder;
+            }
+        }
 
         public static WebUIViewBindingProfile GetOrCreateProfileForHtml(string htmlFullPath)
         {
@@ -20,9 +29,10 @@ namespace UnityWebUI.Editor
             if (existing != null)
                 return existing;
 
-            if (!AssetDatabase.IsValidFolder(DefaultFolder))
+            var defaultFolder = DefaultBindingProfilesFolder;
+            if (!AssetDatabase.IsValidFolder(defaultFolder))
             {
-                Directory.CreateDirectory(DefaultFolder);
+                Directory.CreateDirectory(defaultFolder);
                 AssetDatabase.Refresh();
             }
 
@@ -30,7 +40,7 @@ namespace UnityWebUI.Editor
             if (string.IsNullOrWhiteSpace(baseName))
                 baseName = "WebViewBindings";
 
-            var assetPath = AssetDatabase.GenerateUniqueAssetPath($"{DefaultFolder}/{baseName}.asset");
+            var assetPath = AssetDatabase.GenerateUniqueAssetPath($"{defaultFolder}/{baseName}.asset");
             var profile = ScriptableObject.CreateInstance<WebUIViewBindingProfile>();
             profile.SetSourceHtmlPath(normalized);
             AssetDatabase.CreateAsset(profile, assetPath);

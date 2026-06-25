@@ -53,5 +53,62 @@ namespace UnityWebUI.WebView
         {
             return Path.Combine(Application.streamingAssetsPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
         }
+
+        public static string GetGpuPluginDllPath()
+        {
+            var root = TryGetPackageRoot();
+            if (!string.IsNullOrEmpty(root))
+            {
+                return Path.GetFullPath(Path.Combine(
+                    root, "Plugins", "Windows", "x86_64", "UnityWebUI.WebView2Gpu.dll"));
+            }
+
+            return Path.GetFullPath(Path.Combine(
+                Application.dataPath, "UnityWebUI", "Plugins", "Windows", "x86_64", "UnityWebUI.WebView2Gpu.dll"));
+        }
+
+        public static string GetPackageBuiltGpuDllPath()
+        {
+            var root = TryGetPackageRoot();
+            if (string.IsNullOrEmpty(root))
+                return null;
+
+            return Path.GetFullPath(Path.Combine(
+                root, "Native", "Windows", "UnityWebUI.WebView2Gpu", "bin", "x64", "Release", "UnityWebUI.WebView2Gpu.dll"));
+        }
+
+        public static string GetProjectWebView2BuildGpuDllPath()
+        {
+            return Path.GetFullPath(Path.Combine(
+                Application.dataPath, "..", "WebView2Build", "Native", "x64", "Release", "_out", "UnityWebUI.WebView2Gpu.dll"));
+        }
+
+#if UNITY_EDITOR
+        public static string TryGetAssetsRelativePath(string fullPath)
+        {
+            if (string.IsNullOrEmpty(fullPath))
+                return null;
+
+            var assetsRoot = Path.GetFullPath(Application.dataPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var normalized = Path.GetFullPath(fullPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (!normalized.StartsWith(assetsRoot, System.StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            return ("Assets" + normalized.Substring(assetsRoot.Length)).Replace('\\', '/');
+        }
+
+        public static string GetDefaultBindingProfilesFolder()
+        {
+            var root = TryGetPackageRoot();
+            if (!string.IsNullOrEmpty(root))
+            {
+                var assetsRelative = TryGetAssetsRelativePath(Path.Combine(root, "BindingProfiles"));
+                if (!string.IsNullOrEmpty(assetsRelative))
+                    return assetsRelative;
+            }
+
+            return "Assets/UnityWebUI/BindingProfiles";
+        }
+#endif
     }
 }

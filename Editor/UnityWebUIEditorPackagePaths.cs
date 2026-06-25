@@ -34,8 +34,8 @@ namespace UnityWebUI.Editor
         public static string PendingDllPath =>
             Path.Combine(PackageRoot, "Plugins", "Windows", "x86_64", "UnityWebUI.WebView2Gpu.dll.pending");
 
-        public static string BuiltDllPath =>
-            Path.Combine(PackageRoot, "Native", "Windows", "UnityWebUI.WebView2Gpu", "bin", "x64", "Release", "UnityWebUI.WebView2Gpu.dll");
+        public static string BuiltDllPath => UnityWebUIPackagePaths.GetPackageBuiltGpuDllPath()
+            ?? Path.Combine(PackageRoot, "Native", "Windows", "UnityWebUI.WebView2Gpu", "bin", "x64", "Release", "UnityWebUI.WebView2Gpu.dll");
     }
 }
 #endif
